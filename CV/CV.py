@@ -30,17 +30,26 @@ def track_colored_circle(color_lower, color_upper):
     points = deque(maxlen=64)
     
     cv2.namedWindow('Tracker')
+    cv2.namedWindow('Mask')
     def nothing(x): pass
     
     # Slider to smooth out the drawing line
     cv2.createTrackbar('Smoothing', 'Tracker', 5, 20, nothing)
+    
+    # Initialize smoothing factor with default value
+    smoothing_factor = 5
 
     while True:
         ret, frame = cap.read()
         if not ret: break
         
         frame = cv2.flip(frame, 1) # Mirror view
-        smoothing_factor = max(1, cv2.getTrackbarPos('Smoothing', 'Tracker'))
+        
+        # Get trackbar position (with fallback to default)
+        try:
+            smoothing_factor = max(1, cv2.getTrackbarPos('Smoothing', 'Tracker'))
+        except:
+            smoothing_factor = 5
 
         # 1. Color Masking
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
