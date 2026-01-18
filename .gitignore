@@ -47,3 +47,9 @@ htmlcov/
 *.bak
 *.tmp
 
+
+__pycache__/
+.vscode/
+data/
+env/
+.DS_Store
