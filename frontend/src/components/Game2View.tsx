@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Activity, ChevronDown, ChevronUp, HelpCircle, Music } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGame2WebSocket } from '../hooks/useGame2WebSocket';
 import { useProfileStats } from '../hooks/useProfileStats';
@@ -10,6 +10,7 @@ import { ProfileSummary } from './metrics/ProfileSummary';
 import { SessionPerformance } from './metrics/SessionPerformance';
 import { Card, CardContent } from './ui/Card';
 import { GradientOrbs } from './ui/GradientOrbs';
+import { HelpModal } from './ui/HelpModal';
 
 export function Game2View() {
   const {
@@ -30,6 +31,7 @@ export function Game2View() {
   const [dismissedResultsId, setDismissedResultsId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentMode, setCurrentMode] = useState<'HOLD' | 'FOLLOW'>('HOLD');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Create a unique ID for current session results to track dismissal
   const resultsId = sessionResults ? JSON.stringify(sessionResults) : null;
@@ -162,39 +164,6 @@ export function Game2View() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* BPM controls for FOLLOW mode */}
-            {currentMode === 'FOLLOW' && (
-              <div className="flex items-center gap-2">
-                <Music size={14} className="text-orange-400" />
-                <motion.button
-                  onClick={() => changeBPM(-5)}
-                  className="p-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-700 transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <ChevronDown size={14} />
-                </motion.button>
-                <span className="w-10 text-center text-sm font-bold text-orange-400">
-                  {metrics?.bpm ?? 60}
-                </span>
-                <motion.button
-                  onClick={() => changeBPM(5)}
-                  className="p-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-700 transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <ChevronUp size={14} />
-                </motion.button>
-                <span className="text-xs text-gray-500">BPM</span>
-              </div>
-            )}
-
-            {/* Help button */}
-            <button className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50">
-              <HelpCircle size={20} />
-            </button>
-          </div>
         </div>
       </header>
 
@@ -221,6 +190,7 @@ export function Game2View() {
               onDismissResults={handleDismissResults}
               onStart={startSession}
               onStop={stopSession}
+              onHelpClick={() => setIsHelpOpen(true)}
               canvasRef={canvasRef}
             />
           </div>
@@ -238,6 +208,8 @@ export function Game2View() {
               p95Jitter={metrics?.p95_jitter ?? 0}
               lateralJitter={metrics?.lateral_jitter ?? 0}
               p95LateralJitter={metrics?.p95_lateral_jitter ?? 0}
+              bpm={metrics?.bpm ?? 60}
+              onBpmChange={changeBPM}
               className="h-full"
             />
           </div>
@@ -261,6 +233,7 @@ export function Game2View() {
                 bestJitterScore: profileStats.bestJitterScore,
                 bestTremorScore: profileStats.bestTremorScore,
               }}
+              sessions={sessions}
             />
           </div>
 
@@ -303,6 +276,9 @@ export function Game2View() {
           </Card>
         </motion.div>
       </main>
+
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   );
 }

@@ -188,11 +188,6 @@ export function SessionHistory({ className = '' }: SessionHistoryProps) {
         <AnimatePresence>
           {isExpanded && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
             >
               <CardContent>
                 {error ? (
@@ -207,10 +202,8 @@ export function SessionHistory({ className = '' }: SessionHistoryProps) {
                   </div>
                 ) : (
                   <motion.div
-                    className="space-y-2 max-h-[393px] overflow-y-auto pr-2"
+                    className="space-y-2 max-h-100 overflow-y-auto pr-2"
                     variants={staggerContainer}
-                    initial="initial"
-                    animate="animate"
                   >
                     {isLoading ? (
                       <div className="py-4 text-center text-gray-500 text-sm">

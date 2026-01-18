@@ -1,6 +1,6 @@
 import { useRef, useEffect, type RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, AlertTriangle, Square, Play } from 'lucide-react';
+import { Camera, AlertTriangle, Square, Play, HelpCircle } from 'lucide-react';
 import { ConnectionBadge } from '../layout/ConnectionBadge';
 
 interface CameraSectionProps {
@@ -15,6 +15,7 @@ interface CameraSectionProps {
   onDismissResults?: () => void;
   onStart?: () => void;
   onStop?: () => void;
+  onHelpClick?: () => void;
   canvasRef?: RefObject<HTMLCanvasElement | null>;
   className?: string;
 }
@@ -31,6 +32,7 @@ export function CameraSection({
   onDismissResults,
   onStart,
   onStop,
+  onHelpClick,
   canvasRef: externalCanvasRef,
   className = '',
 }: CameraSectionProps) {
@@ -89,7 +91,7 @@ export function CameraSection({
       >
         {/* Level/Mode indicator at top */}
         <div
-          className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2"
+          className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2"
           style={{
             background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%)',
           }}
@@ -109,17 +111,26 @@ export function CameraSection({
               {currentMode} Mode
             </span>
           </div>
-          {isRunning && (
-            <motion.div
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
-              animate={{ opacity: [1, 0.6, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+          <div className="flex items-center gap-2">
+            {isRunning && (
+              <motion.div
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+                animate={{ opacity: [1, 0.6, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                RECORDING
+              </motion.div>
+            )}
+            {/* Help button */}
+            <button
+              onClick={onHelpClick}
+              className="p-1.5 rounded-lg bg-black/30 hover:bg-black/50 text-gray-400 hover:text-white transition-colors"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-              RECORDING
-            </motion.div>
-          )}
+              <HelpCircle size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Corner accents */}
@@ -170,6 +181,47 @@ export function CameraSection({
                 <p className="text-gray-400 text-sm mt-1">
                   Position a colored marker in the camera view
                 </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Idle instructions overlay - shows when ready to start or after dismissing results */}
+        <AnimatePresence>
+          {isConnected && markerDetected && (sessionState === 'IDLE' || (sessionState === 'COMPLETE' && !sessionResults)) && (
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div
+                className="px-6 py-5 rounded-2xl text-center max-w-sm mx-4"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.85)',
+                  backdropFilter: 'blur(12px)',
+                  border: `1px solid ${accentColor}40`,
+                  boxShadow: `0 0 30px ${accentColor}20`,
+                }}
+              >
+                <div
+                  className="text-xs font-semibold uppercase tracking-wider mb-3"
+                  style={{ color: accentColor }}
+                >
+                  {isHold ? 'Stability Test' : 'Movement Test'}
+                </div>
+                <p className="text-sm text-gray-200 leading-relaxed mb-4">
+                  {isHold ? (
+                    <>Hold the pen <strong>completely still</strong> for 10 seconds. Focus on keeping your hand steady.</>
+                  ) : (
+                    <>Move the pen <strong>back and forth</strong> following the metronome beat. Smooth, controlled movements.</>
+                  )}
+                </p>
+                <div className="pt-3 border-t border-gray-700/50">
+                  <p className="text-xs text-gray-400">
+                    Press <kbd className="px-1.5 py-0.5 rounded bg-gray-700/80 text-gray-200 font-mono mx-1">Space</kbd> or click <span className="font-semibold" style={{ color: accentColor }}>START</span> to begin
+                  </p>
+                </div>
               </div>
             </motion.div>
           )}
@@ -244,8 +296,11 @@ export function CameraSection({
                     boxShadow: `0 4px 16px ${accentColor}40`,
                   }}
                 >
-                  Continue
+                  Exit
                 </button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Press to return and start another session
+                </p>
               </motion.div>
             </motion.div>
           )}
