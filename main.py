@@ -340,16 +340,17 @@ class SteadyScriptApp:
                 self.session_manager.update(self.marker_pos, circle_center, circle_radius)
             
             # Update Arduino LED based on marker position
-            if self.arduino is not None and self.calibration_state.is_complete() and self.marker_pos is not None:
-                marker_inside = utils.point_in_circle(
-                    self.marker_pos, 
-                    self.calibration_state.center, 
-                    self.calibration_state.radius
-                )
-                self.arduino.update(marker_inside)
-            elif self.arduino is not None:
-                # Marker not found or calibration incomplete - turn LED off
-                self.arduino.update(False)
+            if self.arduino is not None and self.arduino.is_connected:
+                if self.calibration_state.is_complete() and self.marker_pos is not None:
+                    marker_inside = utils.point_in_circle(
+                        self.marker_pos, 
+                        self.calibration_state.center, 
+                        self.calibration_state.radius
+                    )
+                    self.arduino.update(marker_inside)
+                else:
+                    # Marker not found or calibration incomplete - turn LED off
+                    self.arduino.update(False)
             
             # Draw overlays
             self._draw_overlays(frame)

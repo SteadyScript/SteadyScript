@@ -35,8 +35,14 @@ class ArduinoLEDController:
             time.sleep(2)  # Wait for Arduino to initialize
             self.is_connected = True
             print(f"Arduino connected on {self.port}")
-            # Initialize LED to OFF
+            
+            # Boot-up test: Turn LED ON for 2 seconds to verify connection
+            print("Arduino boot-up test: LED should turn ON for 2 seconds...")
+            self._send_state(True)
+            time.sleep(2)
             self._send_state(False)
+            print("Boot-up test complete. LED should now be OFF.")
+            self.current_state = False
         except serial.SerialException as e:
             self.is_connected = False
             print(f"Warning: Could not connect to Arduino on {self.port}")
@@ -59,8 +65,10 @@ class ArduinoLEDController:
         try:
             if state:
                 self.ser.write(b'1')  # Turn ON
+                self.ser.flush()  # Ensure data is sent immediately
             else:
                 self.ser.write(b'0')  # Turn OFF
+                self.ser.flush()  # Ensure data is sent immediately
             self.current_state = state
         except Exception as e:
             print(f"Error sending to Arduino: {e}")
@@ -73,6 +81,9 @@ class ArduinoLEDController:
         Args:
             marker_inside_circle: True if marker is inside circle, False otherwise
         """
+        if not self.is_connected:
+            return
+        
         # Only update if state changed (avoid spamming serial)
         if marker_inside_circle != self.current_state:
             self._send_state(marker_inside_circle)
