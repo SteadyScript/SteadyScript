@@ -1,16 +1,16 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, History, Minus, Move, RefreshCw, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, TrendingUp, TrendingDown, Minus, History, RefreshCw, Target, Move } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { SessionDetailModal } from './SessionDetailModal';
 import { useSessionHistory } from '../../hooks/useSessionHistory';
+import { staggerContainer, staggerItem } from '../../styles/animations';
 import {
   type Session,
-  getTrendSymbol,
   formatSessionDateTime,
   getScoreColor,
+  getTrendSymbol,
 } from '../../utils/progressCalculations';
-import { staggerContainer, staggerItem } from '../../styles/animations';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { SessionDetailModal } from './SessionDetailModal';
 
 interface SessionHistoryProps {
   className?: string;
@@ -64,9 +64,8 @@ function SessionRow({
         <div className="flex-1 flex gap-2">
           {/* HOLD card */}
           <div
-            className={`flex-1 px-3 py-2 rounded-lg border ${
-              isHold ? 'opacity-100' : 'opacity-40'
-            }`}
+            className={`flex-1 px-3 py-2 rounded-lg border ${isHold ? 'opacity-100' : 'opacity-40'
+              }`}
             style={{
               background: isHold ? 'rgba(14, 165, 233, 0.1)' : 'rgba(30, 33, 40, 0.5)',
               borderColor: isHold ? 'rgba(14, 165, 233, 0.3)' : 'transparent',
@@ -86,9 +85,8 @@ function SessionRow({
 
           {/* FOLLOW card */}
           <div
-            className={`flex-1 px-3 py-2 rounded-lg border ${
-              !isHold ? 'opacity-100' : 'opacity-40'
-            }`}
+            className={`flex-1 px-3 py-2 rounded-lg border ${!isHold ? 'opacity-100' : 'opacity-40'
+              }`}
             style={{
               background: !isHold ? 'rgba(249, 115, 22, 0.1)' : 'rgba(30, 33, 40, 0.5)',
               borderColor: !isHold ? 'rgba(249, 115, 22, 0.3)' : 'transparent',
@@ -209,7 +207,7 @@ export function SessionHistory({ className = '' }: SessionHistoryProps) {
                   </div>
                 ) : (
                   <motion.div
-                    className="space-y-2 max-h-80 overflow-y-auto pr-2"
+                    className="space-y-2 max-h-[393px] overflow-y-auto pr-2"
                     variants={staggerContainer}
                     initial="initial"
                     animate="animate"

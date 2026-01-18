@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, HelpCircle, ChevronUp, ChevronDown, Music } from 'lucide-react';
+import { Activity, ChevronDown, ChevronUp, HelpCircle, Music } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGame2WebSocket } from '../hooks/useGame2WebSocket';
-import { useSessionHistory } from '../hooks/useSessionHistory';
 import { useProfileStats } from '../hooks/useProfileStats';
+import { useSessionHistory } from '../hooks/useSessionHistory';
 import { CameraSection } from './camera/CameraSection';
-import { SessionPerformance } from './metrics/SessionPerformance';
-import { ProfileSummary } from './metrics/ProfileSummary';
 import { SessionHistory } from './history/SessionHistory';
-import { GradientOrbs } from './ui/GradientOrbs';
+import { ProfileSummary } from './metrics/ProfileSummary';
+import { SessionPerformance } from './metrics/SessionPerformance';
 import { Card, CardContent } from './ui/Card';
+import { GradientOrbs } from './ui/GradientOrbs';
 
 export function Game2View() {
   const {
@@ -27,14 +27,19 @@ export function Game2View() {
 
   const { sessions, refetch: refetchSessions } = useSessionHistory();
   const profileStats = useProfileStats(sessions);
-  const [localSessionResults, setLocalSessionResults] = useState<Record<string, unknown> | null>(null);
+  const [dismissedResultsId, setDismissedResultsId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentMode, setCurrentMode] = useState<'HOLD' | 'FOLLOW'>('HOLD');
 
-  // Update local session results when received
+  // Create a unique ID for current session results to track dismissal
+  const resultsId = sessionResults ? JSON.stringify(sessionResults) : null;
+
+  // Derive local session results - show if exists and not dismissed
+  const localSessionResults = resultsId && resultsId !== dismissedResultsId ? sessionResults : null;
+
+  // Refetch sessions when new results arrive (side effect only, no state sync)
   useEffect(() => {
     if (sessionResults) {
-      setLocalSessionResults(sessionResults);
       refetchSessions();
     }
   }, [sessionResults, refetchSessions]);
@@ -44,9 +49,9 @@ export function Game2View() {
     (mode: 'HOLD' | 'FOLLOW') => {
       setCurrentMode(mode);
       switchMode(mode);
-      setLocalSessionResults(null);
+      setDismissedResultsId(resultsId); // Dismiss any current results when switching modes
     },
-    [switchMode]
+    [switchMode, resultsId]
   );
 
   // Handle canvas click for calibration
@@ -61,9 +66,9 @@ export function Game2View() {
 
   // Handle dismissing results
   const handleDismissResults = useCallback(() => {
-    setLocalSessionResults(null);
+    setDismissedResultsId(resultsId);
     handleKeyboard(' ');
-  }, [handleKeyboard]);
+  }, [handleKeyboard, resultsId]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -79,7 +84,6 @@ export function Game2View() {
       } else if (e.key === ' ') {
         e.preventDefault();
         if (metrics?.session_state === 'IDLE') {
-          setLocalSessionResults(null);
           startSession();
         } else if (metrics?.session_state === 'RUNNING') {
           stopSession();
@@ -194,16 +198,17 @@ export function Game2View() {
         </div>
       </header>
 
-      {/* Main content - Bento Grid */}
+      {/* Main content - Grid Layout */}
       <main className="max-w-7xl mx-auto px-6 py-6">
+        {/* Top Row - Camera (60%) + Session Performance (40%) */}
         <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+          className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          {/* Top Left - Camera Section */}
-          <div className="lg:row-span-1">
+          {/* Camera Section - wider */}
+          <div className="h-full">
             <CameraSection
               frameData={frameData}
               isConnected={isConnected}
@@ -220,8 +225,8 @@ export function Game2View() {
             />
           </div>
 
-          {/* Top Right - Session Performance */}
-          <div className="lg:row-span-1">
+          {/* Session Performance - narrower but fills height */}
+          <div className="h-full">
             <SessionPerformance
               score={metrics?.score ?? 0}
               status={getStatus()}
@@ -233,16 +238,20 @@ export function Game2View() {
               p95Jitter={metrics?.p95_jitter ?? 0}
               lateralJitter={metrics?.lateral_jitter ?? 0}
               p95LateralJitter={metrics?.p95_lateral_jitter ?? 0}
+              className="h-full"
             />
           </div>
+        </motion.div>
 
-          {/* Bottom Left - Session History */}
-          <div className="lg:row-span-1">
-            <SessionHistory />
-          </div>
-
-          {/* Bottom Right - Profile Summary */}
-          <div className="lg:row-span-1">
+        {/* Bottom Row - Profile Summary (40%) + Session History (60%) */}
+        <motion.div
+          className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5 mt-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          {/* Profile Summary - left side */}
+          <div>
             <ProfileSummary
               stats={{
                 currentStreak: profileStats.currentStreak,
@@ -253,6 +262,11 @@ export function Game2View() {
                 bestTremorScore: profileStats.bestTremorScore,
               }}
             />
+          </div>
+
+          {/* Session History - right side, wider */}
+          <div>
+            <SessionHistory />
           </div>
         </motion.div>
 

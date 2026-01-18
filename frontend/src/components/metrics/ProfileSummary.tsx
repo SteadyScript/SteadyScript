@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { User, Trophy, TrendingUp } from 'lucide-react';
+import { TrendingUp, Trophy, User } from 'lucide-react';
 import { Card, CardContent } from '../ui/Card';
 import { CircularProgress } from '../ui/CircularProgress';
 import { StreakIndicator } from '../ui/StreakIndicator';

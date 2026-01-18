@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Activity, Target, Move } from 'lucide-react';
+import { Activity, Target, Move, Zap, Info } from 'lucide-react';
 import { Card, CardContent, TestCard } from '../ui/Card';
 import { getScoreStatus } from '../../utils/progressCalculations';
 
@@ -47,13 +47,32 @@ export function SessionPerformance({
   const statusColor = getStatusColor();
   const scoreStatus = getScoreStatus(score);
 
+  // Tips based on mode and status
+  const getTip = () => {
+    if (isRunning) {
+      if (isHold) {
+        return 'Keep your hand as still as possible. Focus on a fixed point.';
+      }
+      return 'Follow the target smoothly. Avoid jerky movements.';
+    }
+    if (sessionState === 'COMPLETE') {
+      if (score >= 70) return 'Excellent performance! Your stability is improving.';
+      if (score >= 40) return 'Good effort! Try to relax your hand muscles more.';
+      return 'Keep practicing! Focus on smooth, controlled movements.';
+    }
+    if (isHold) {
+      return 'Position your marker and click START to begin the stability test.';
+    }
+    return 'Adjust your BPM in the header, then click START to begin.';
+  };
+
   return (
     <Card
       variant={isRunning ? 'glow' : 'default'}
       glowMode={isHold ? 'hold' : 'follow'}
-      className={className}
+      className={`flex flex-col ${className}`}
     >
-      <CardContent>
+      <CardContent className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -72,26 +91,25 @@ export function SessionPerformance({
         </div>
 
         {/* Large Score Display */}
-        <div className="text-center py-4">
+        <div className="py-6 flex flex-col items-center">
           <motion.div
-            className="relative inline-block"
             key={Math.floor(score / 5)}
             initial={{ scale: 0.95, opacity: 0.8 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
             <span
-              className="text-6xl font-bold tabular-nums"
+              className="text-7xl font-bold tabular-nums"
               style={{ color: statusColor }}
             >
               {Math.round(score)}
             </span>
-            <span className="text-xl text-gray-500 ml-1">%</span>
+            <span className="text-2xl text-gray-500 ml-1">%</span>
           </motion.div>
 
-          {/* Status badge */}
+          {/* Status badge - below the score */}
           <motion.div
-            className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium capitalize"
+            className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium capitalize"
             style={{
               backgroundColor: `${statusColor}15`,
               color: statusColor,
@@ -132,40 +150,54 @@ export function SessionPerformance({
           </div>
         )}
 
-        {/* Test type cards */}
-        <div className="space-y-3">
-          {isHold ? (
-            <TestCard
-              mode="HOLD"
-              title="Stability Test"
-              primaryValue={p95Jitter}
-              primaryLabel="P95 Jitter (px)"
-              secondaryValue={jitter}
-              secondaryLabel="Avg Jitter"
-              status={scoreStatus}
-              compact
-            />
-          ) : (
-            <TestCard
-              mode="FOLLOW"
-              title="Movement Test"
-              primaryValue={p95LateralJitter}
-              primaryLabel="P95 Lateral (px)"
-              secondaryValue={lateralJitter}
-              secondaryLabel="Avg Lateral"
-              status={scoreStatus}
-              compact
-            />
-          )}
+        {/* Test type cards - show BOTH with active one highlighted */}
+        <div className="space-y-3 flex-1">
+          <TestCard
+            mode="HOLD"
+            title="Stability Test"
+            primaryValue={p95Jitter}
+            primaryLabel="P95 Jitter (px)"
+            secondaryValue={jitter}
+            secondaryLabel="Avg Jitter"
+            status={isHold ? scoreStatus : undefined}
+            compact
+            className={!isHold ? 'opacity-40' : ''}
+          />
+
+          <TestCard
+            mode="FOLLOW"
+            title="Movement Test"
+            primaryValue={p95LateralJitter}
+            primaryLabel="P95 Lateral (px)"
+            secondaryValue={lateralJitter}
+            secondaryLabel="Avg Lateral"
+            status={!isHold ? scoreStatus : undefined}
+            compact
+            className={isHold ? 'opacity-40' : ''}
+          />
         </div>
 
-        {/* Quick metric labels */}
+        {/* Session Tip */}
+        <div className="mt-4 pt-4 border-t border-gray-700/50">
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-800/50">
+            <div className="flex-shrink-0 mt-0.5">
+              {isRunning ? (
+                <Zap size={14} className="text-amber-400" />
+              ) : (
+                <Info size={14} className="text-gray-500" />
+              )}
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">{getTip()}</p>
+          </div>
+        </div>
+
+        {/* Quick mode labels */}
         <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-gray-700/50">
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${isHold ? '' : 'opacity-40'}`}>
             <Target size={14} className="text-cyan-400" />
             <span className="text-xs text-gray-400">HOLD</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${!isHold ? '' : 'opacity-40'}`}>
             <Move size={14} className="text-orange-400" />
             <span className="text-xs text-gray-400">FOLLOW</span>
           </div>
