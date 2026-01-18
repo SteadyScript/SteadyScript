@@ -90,6 +90,7 @@ export function useGame2WebSocket() {
   }, [sendMessage]);
 
   const startSession = useCallback(() => {
+    setSessionResults(null);  // Clear previous results before starting new session
     sendMessage('session_start');
   }, [sendMessage]);
 

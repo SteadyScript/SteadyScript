@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { Activity, Target, Move, Zap, Info } from 'lucide-react';
-import { Card, CardContent, TestCard } from '../ui/Card';
+import { Activity, ChevronDown, ChevronUp, Info, Move, Target, Zap } from 'lucide-react';
 import { getScoreStatus } from '../../utils/progressCalculations';
+import { Card, CardContent, TestCard } from '../ui/Card';
 
 interface SessionPerformanceProps {
   score: number;
@@ -16,6 +16,8 @@ interface SessionPerformanceProps {
   // FOLLOW metrics
   lateralJitter?: number;
   p95LateralJitter?: number;
+  bpm?: number;
+  onBpmChange?: (delta: number) => void;
   className?: string;
 }
 
@@ -30,6 +32,8 @@ export function SessionPerformance({
   p95Jitter = 0,
   lateralJitter = 0,
   p95LateralJitter = 0,
+  bpm = 60,
+  onBpmChange,
   className = '',
 }: SessionPerformanceProps) {
   const isHold = mode === 'HOLD';
@@ -175,6 +179,30 @@ export function SessionPerformance({
             compact
             className={isHold ? 'opacity-40' : ''}
           />
+
+          {/* BPM controls for FOLLOW mode */}
+          {!isHold && (
+            <div className="flex items-center justify-center gap-3 mt-3 py-2 px-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+              <motion.button
+                onClick={() => onBpmChange?.(-5)}
+                className="p-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-700 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <ChevronDown size={16} className="text-orange-400" />
+              </motion.button>
+              <span className="w-12 text-center text-2xl font-bold text-orange-400">{bpm}</span>
+              <motion.button
+                onClick={() => onBpmChange?.(5)}
+                className="p-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-700 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <ChevronUp size={16} className="text-orange-400" />
+              </motion.button>
+              <span className="text-xs text-gray-400 ml-1">BPM</span>
+            </div>
+          )}
         </div>
 
         {/* Session Tip */}

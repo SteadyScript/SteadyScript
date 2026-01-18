@@ -16,7 +16,6 @@ import time
 from ..compvis.game2 import (
     AppMode, SessionState, HoldMetrics, FollowMetrics,
     Metronome, CalibrationState, detect_marker, get_mask,
-    draw_mode_header, draw_hold_mode, draw_follow_mode, draw_results,
     CONFIG, save_session, calibration_state, ArduinoLED
 )
 from datetime import datetime, timezone
@@ -55,6 +54,46 @@ def encode_frame(frame: np.ndarray) -> str:
     _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
     jpg_as_text = base64.b64encode(buffer).decode('utf-8')
     return jpg_as_text
+
+
+def draw_marker_only(frame: np.ndarray, pen_pos, stability_level: str) -> np.ndarray:
+    """Draw just the marker position circle - minimal visualization."""
+    if pen_pos:
+        colors = {"stable": (0, 255, 0), "warning": (0, 255, 255), "unstable": (0, 0, 255)}
+        color = colors.get(stability_level, (0, 255, 0))
+        cv2.circle(frame, pen_pos, 20, color, 2)
+        cv2.circle(frame, pen_pos, 5, color, -1)
+    return frame
+
+
+def draw_follow_marker_and_trail(frame: np.ndarray, pen_pos, positions, lateral_jitter_values, feedback_status: str) -> np.ndarray:
+    """Draw marker and movement trail with jitter-based coloring - minimal visualization."""
+    # Draw the trail with lateral jitter-based coloring
+    if len(positions) > 1:
+        for i in range(1, len(positions)):
+            pt1 = positions[i - 1]
+            pt2 = positions[i]
+            idx = i - 1
+            if idx < len(lateral_jitter_values):
+                lateral_jitter = lateral_jitter_values[idx]
+                if lateral_jitter <= CONFIG["lateral_jitter_stable_threshold"]:
+                    color = (0, 255, 0)  # Green = smooth
+                elif lateral_jitter <= CONFIG["lateral_jitter_warning_threshold"]:
+                    color = (0, 255, 255)  # Yellow = warning
+                else:
+                    color = (0, 0, 255)  # Red = shaky
+            else:
+                color = (0, 255, 0)
+            cv2.line(frame, pt1, pt2, color, 2)
+
+    # Draw current pen position
+    if pen_pos:
+        pen_colors = {"good": (0, 255, 0), "warning": (0, 255, 255), "poor": (0, 0, 255)}
+        pen_color = pen_colors.get(feedback_status, (0, 255, 0))
+        cv2.circle(frame, pen_pos, 12, pen_color, 3)
+        cv2.circle(frame, pen_pos, 4, pen_color, -1)
+
+    return frame
 
 
 async def game2_frame_loop(websocket: WebSocket):
@@ -147,27 +186,24 @@ async def game2_frame_loop(websocket: WebSocket):
                 if game2_state.arduino:
                     game2_state.arduino.set_led(False)
             
-            # Draw overlays
-            frame = draw_mode_header(
-                frame, 
-                game2_state.current_mode, 
-                game2_state.session_state, 
-                time_remaining, 
-                game2_state.current_bpm
-            )
-            
-            if game2_state.session_state == SessionState.COMPLETE and game2_state.last_results:
-                frame = draw_results(frame, game2_state.current_mode, game2_state.last_results)
-            elif game2_state.current_mode == AppMode.HOLD:
-                frame = draw_hold_mode(frame, pen_pos, game2_state.hold_metrics, game2_state.session_state)
+            # Draw minimal marker visualization only (UI is in React)
+            if game2_state.current_mode == AppMode.HOLD:
+                stability_level = game2_state.hold_metrics.jitter_tracker.get_stability_level()
+                frame = draw_marker_only(frame, pen_pos, stability_level)
             else:
-                frame = draw_follow_mode(
-                    frame, 
-                    pen_pos, 
-                    game2_state.follow_metrics, 
-                    game2_state.session_state, 
-                    beat_count
-                )
+                # For FOLLOW mode, draw marker and trail
+                feedback_status = game2_state.follow_metrics.get_feedback_status()
+                if game2_state.session_state == SessionState.RUNNING:
+                    frame = draw_follow_marker_and_trail(
+                        frame,
+                        pen_pos,
+                        game2_state.follow_metrics.positions,
+                        game2_state.follow_metrics.jitter_tracker.lateral_jitter_values,
+                        feedback_status
+                    )
+                else:
+                    # When not running, just draw the marker
+                    frame = draw_marker_only(frame, pen_pos, feedback_status if pen_pos else "stable")
             
             # Encode and send frame
             frame_encoded = encode_frame(frame)
