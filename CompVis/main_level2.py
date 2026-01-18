@@ -144,7 +144,7 @@ class Level2App:
         elif key_char == ' ' and self.current_state == READY:
             # Start session (only if A and B are set)
             if self.point_a is not None and self.point_b is not None:
-                self.session.start_session()
+                self.session.start_session(self.point_a, self.point_b)
                 self.current_state = RUNNING
                 print("FOLLOW session started!")
             else:

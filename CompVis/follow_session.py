@@ -13,8 +13,8 @@ import utils
 # Configuration constants for movement quality scoring
 FOLLOW_CONFIG = {
     "duration": 20.0,  # 20 seconds for FOLLOW mode
-    "jitter_ref": 6.0,  # Reference jitter threshold (pixels) - adjusted for movement tasks
-    "jerk_ref": 80.0,  # Reference jerk threshold (pixels/s³) - adjusted for movement tasks
+    "jitter_ref": 2.5,  # Reference jitter threshold (pixels) - perpendicular tremor only
+    "jerk_ref": 30.0,  # Reference jerk threshold (pixels/s³) - perpendicular tremor only
     "wobble_ref": 0.4,  # Reference wobble ratio threshold - adjusted for movement tasks
     "smoothing_window": 10,  # Frames for moving average
     "rolling_window_seconds": 1.0,  # Rolling window duration
@@ -51,6 +51,12 @@ class FollowSessionManager:
         # Target error tracking (optional)
         self.target_errors: deque = deque(maxlen=600)
         
+        # A-B direction for perpendicular tremor calculation
+        self.point_a: Optional[Tuple[int, int]] = None
+        self.point_b: Optional[Tuple[int, int]] = None
+        self.ab_direction: Optional[Tuple[float, float]] = None  # Normalized A->B direction
+        self.perp_direction: Optional[Tuple[float, float]] = None  # Perpendicular direction
+        
         # Session metrics
         self.frames_total = 0
         self.frames_marker_found = 0
@@ -71,8 +77,15 @@ class FollowSessionManager:
         
         self.movement_quality_score = 0.0
     
-    def start_session(self):
-        """Start a new session, resetting all metrics."""
+    def start_session(self, point_a: Optional[Tuple[int, int]] = None, 
+                      point_b: Optional[Tuple[int, int]] = None):
+        """
+        Start a new session, resetting all metrics.
+        
+        Args:
+            point_a: Point A coordinates for perpendicular tremor calculation
+            point_b: Point B coordinates for perpendicular tremor calculation
+        """
         self.start_time = time.time()
         self.is_active = True
         self.positions.clear()
@@ -99,6 +112,26 @@ class FollowSessionManager:
         self.avg_target_error = 0.0
         self.p95_target_error = 0.0
         self.movement_quality_score = 0.0
+        
+        # Set A-B direction for perpendicular tremor calculation
+        self.point_a = point_a
+        self.point_b = point_b
+        if point_a is not None and point_b is not None:
+            # Calculate A->B direction vector
+            dx = point_b[0] - point_a[0]
+            dy = point_b[1] - point_a[1]
+            distance = math.sqrt(dx*dx + dy*dy)
+            if distance > 0:
+                # Normalized A->B direction
+                self.ab_direction = (dx / distance, dy / distance)
+                # Perpendicular direction (rotate 90 degrees: (-dy, dx))
+                self.perp_direction = (-dy / distance, dx / distance)
+            else:
+                self.ab_direction = None
+                self.perp_direction = None
+        else:
+            self.ab_direction = None
+            self.perp_direction = None
     
     def stop_session(self):
         """Stop the current session and compute final metrics."""
@@ -153,17 +186,28 @@ class FollowSessionManager:
                 acceleration = (ax, ay)
                 self.accelerations.append(acceleration)
             
-            # Compute jerk
+            # Compute jerk (rate of change of acceleration)
+            # Jerk perpendicular to A-B direction (tremor-like twitchiness)
             if len(self.accelerations) >= 2:
                 prev_acc = self.accelerations[-2]
                 curr_acc = self.accelerations[-1]
                 jx = (curr_acc[0] - prev_acc[0]) / dt
                 jy = (curr_acc[1] - prev_acc[1]) / dt
-                jerk_magnitude = math.sqrt(jx*jx + jy*jy)
+                
+                # If we have A-B direction, calculate perpendicular jerk component
+                if self.perp_direction is not None:
+                    # Project jerk onto perpendicular direction
+                    perp_jerk = jx * self.perp_direction[0] + jy * self.perp_direction[1]
+                    jerk_magnitude = abs(perp_jerk)
+                else:
+                    # Fallback: use total jerk magnitude
+                    jerk_magnitude = math.sqrt(jx*jx + jy*jy)
+                
                 self.current_jerk = jerk_magnitude
                 self.jerk_values.append(jerk_magnitude)
             
             # Compute jitter if we have enough data
+            # Jitter = perpendicular component of deviation (tremor, not intended movement)
             if len(self.positions) >= FOLLOW_CONFIG["smoothing_window"]:
                 smoothed = utils.smooth_positions(
                     list(self.positions), 
@@ -171,9 +215,20 @@ class FollowSessionManager:
                 )
                 
                 if smoothed is not None:
+                    # Calculate deviation vector
                     dx = pos_float[0] - smoothed[0]
                     dy = pos_float[1] - smoothed[1]
-                    jitter = math.sqrt(dx*dx + dy*dy)
+                    
+                    # If we have A-B direction, calculate perpendicular tremor component
+                    if self.perp_direction is not None:
+                        # Project deviation onto perpendicular direction (tremor)
+                        # Dot product with perpendicular direction
+                        perp_component = dx * self.perp_direction[0] + dy * self.perp_direction[1]
+                        # Use absolute value of perpendicular component as tremor
+                        jitter = abs(perp_component)
+                    else:
+                        # Fallback: use total deviation if A-B not set
+                        jitter = math.sqrt(dx*dx + dy*dy)
                     
                     self.current_jitter = jitter
                     self.jitter_values.append(jitter)
