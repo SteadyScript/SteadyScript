@@ -21,6 +21,7 @@ import time
 import json
 import math
 import threading
+import serial
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Tuple, List, Dict
@@ -76,7 +77,81 @@ CONFIG = {
     "sessions_file": os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "CompVis", "data", "sessions.json"
     ),
+
+    # Arduino serial
+    "arduino_port": "/dev/tty.usbmodemB0818498245C2",  # Change to your Arduino port (e.g., COM3 on Windows)
+    "arduino_baud": 9600,
 }
+
+# ===============================
+# ARDUINO LED CONTROL
+# ===============================
+
+class ArduinoLED:
+    """Controls 2 LEDs via Arduino serial connection.
+    
+    Commands:
+      '0' = Both LEDs off (unstable/poor)
+      '1' = Green LED on (stable/good)
+      '2' = Yellow LED on (warning)
+    """
+    def __init__(self, port: str, baud: int):
+        self.serial_conn: Optional[serial.Serial] = None
+        self.is_connected = False
+        self.current_state: Optional[str] = None  # '0', '1', or '2'
+        
+        try:
+            self.serial_conn = serial.Serial(port, baud, timeout=1)
+            time.sleep(2.0)  # Wait for Arduino to reset after connection
+            self.is_connected = True
+            print(f"[ARDUINO] Connected on {port}")
+            print("[ARDUINO] 2-LED mode: Green=stable, Yellow=warning, Off=unstable")
+        except serial.SerialException as e:
+            print(f"[ARDUINO] Could not connect: {e}")
+            print("[ARDUINO] LED feedback disabled. Check port in CONFIG.")
+
+    def set_led_state(self, state: str):
+        """Set LED state: '0'=off, '1'=green, '2'=yellow."""
+        if not self.is_connected or self.serial_conn is None:
+            return
+        if state == self.current_state:
+            return  # No change needed
+        try:
+            self.serial_conn.write(state.encode())
+            self.serial_conn.flush()
+            self.current_state = state
+        except serial.SerialException as e:
+            print(f"[ARDUINO] Error: {e}")
+            self.is_connected = False
+
+    def set_led(self, on: bool):
+        """Legacy method: Turn green LED on (True) or both off (False)."""
+        self.set_led_state('1' if on else '0')
+
+    def update_from_stability(self, level: str):
+        """Update LEDs based on stability level.
+        
+        - 'stable' or 'good' -> Green LED on
+        - 'warning' -> Yellow LED on  
+        - 'unstable' or 'poor' -> Both LEDs off
+        """
+        if level in ("stable", "good"):
+            self.set_led_state('1')  # Green LED
+        elif level == "warning":
+            self.set_led_state('2')  # Yellow LED
+        else:
+            self.set_led_state('0')  # Both off
+
+    def close(self):
+        """Close serial connection."""
+        if self.serial_conn is not None and self.serial_conn.is_open:
+            try:
+                self.set_led_state('0')  # Turn off both LEDs
+                self.serial_conn.close()
+                print("[ARDUINO] Connection closed")
+            except Exception:
+                pass
+
 
 # ===============================
 # AUDIO (Metronome)
@@ -826,6 +901,9 @@ def main():
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f"Camera ready: {frame_width}x{frame_height}")
 
+    # Initialize Arduino LED control
+    arduino = ArduinoLED(CONFIG["arduino_port"], CONFIG["arduino_baud"])
+
     hsv_lower = np.array(CONFIG["hsv_lower"])
     hsv_upper = np.array(CONFIG["hsv_upper"])
 
@@ -903,8 +981,17 @@ def main():
         if session_state == SessionState.RUNNING:
             if current_mode == AppMode.HOLD:
                 hold_metrics.update(pen_pos)
+                # Update Arduino LED based on stability
+                level = hold_metrics.jitter_tracker.get_stability_level()
+                arduino.update_from_stability(level)
             else:
                 follow_metrics.update(pen_pos, beat_count)
+                # Update Arduino LED based on lateral stability
+                status = follow_metrics.get_feedback_status()
+                arduino.update_from_stability(status)
+        else:
+            # Turn off LED when not running
+            arduino.set_led(False)
 
         frame = draw_mode_header(frame, current_mode, session_state, time_remaining, current_bpm)
 
@@ -930,6 +1017,7 @@ def main():
 
         if key in (ord('q'), ord('Q')):
             metronome.stop()
+            arduino.close()
             break
 
         elif key == ord('1'):
