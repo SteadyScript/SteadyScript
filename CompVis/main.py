@@ -392,37 +392,32 @@ def main():
     """Entry point."""
     import sys
     
+    # --- CONFIGURATION ---
+    # PASTE YOUR EXACT MAC PORT HERE (e.g., '/dev/tty.usbmodem1101')
+    # You can find this in Arduino IDE > Tools > Port
+    DEFAULT_PORT = '/dev/tty.usbmodemB0818498245C2' 
+    # ---------------------
+
     camera_index = None
-    arduino_port = None
+    arduino_port = DEFAULT_PORT 
     
-    # Parse command-line arguments
-    # Usage: python main.py [camera_index] [arduino_port]
-    # Example: python main.py 0 COM3
-    # Example: python main.py COM3  (camera 0, Arduino on COM3)
-    
+    # Allow command line overrides (optional)
     if len(sys.argv) > 1:
-        # First argument could be camera index or Arduino port
         arg1 = sys.argv[1]
         try:
-            # Try to parse as camera index (integer)
             camera_index = int(arg1)
-            print(f"Using specified camera index: {camera_index}")
-            # Check for Arduino port as second argument
             if len(sys.argv) > 2:
                 arduino_port = sys.argv[2]
-                print(f"Using Arduino port: {arduino_port}")
         except ValueError:
-            # Not an integer, assume it's Arduino port
             arduino_port = arg1
-            print(f"Using Arduino port: {arduino_port}")
-            # Check for camera index as second argument
             if len(sys.argv) > 2:
                 try:
                     camera_index = int(sys.argv[2])
-                    print(f"Using specified camera index: {camera_index}")
                 except ValueError:
-                    print(f"Invalid camera index: {sys.argv[2]}. Using default (0).")
-    
+                    pass
+
+    print(f"Starting SteadyScript with Arduino Port: {arduino_port}")
+
     try:
         app = SteadyScriptApp(camera_index=camera_index, arduino_port=arduino_port)
         app.run()
@@ -432,7 +427,6 @@ def main():
         print(f"Error: {e}")
         import traceback
         traceback.print_exc()
-
 
 if __name__ == "__main__":
     main()
