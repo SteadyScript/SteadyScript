@@ -17,7 +17,7 @@ from ..compvis.game2 import (
     AppMode, SessionState, HoldMetrics, FollowMetrics,
     Metronome, CalibrationState, detect_marker, get_mask,
     draw_mode_header, draw_hold_mode, draw_follow_mode, draw_results,
-    CONFIG, save_session, calibration_state
+    CONFIG, save_session, calibration_state, ArduinoLED
 )
 from datetime import datetime, timezone
 
@@ -43,6 +43,9 @@ class Game2State:
         self.show_mask = False
         self.running = False
         self.frame_loop_task: Optional[asyncio.Task] = None
+        
+        # Arduino LED control
+        self.arduino: Optional[ArduinoLED] = None
 
 game2_state = Game2State()
 
@@ -129,8 +132,20 @@ async def game2_frame_loop(websocket: WebSocket):
             if game2_state.session_state == SessionState.RUNNING:
                 if game2_state.current_mode == AppMode.HOLD:
                     game2_state.hold_metrics.update(pen_pos)
+                    # Update Arduino LED based on stability
+                    if game2_state.arduino:
+                        level = game2_state.hold_metrics.jitter_tracker.get_stability_level()
+                        game2_state.arduino.update_from_stability(level)
                 else:
                     game2_state.follow_metrics.update(pen_pos, beat_count)
+                    # Update Arduino LED based on lateral stability
+                    if game2_state.arduino:
+                        status = game2_state.follow_metrics.get_feedback_status()
+                        game2_state.arduino.update_from_stability(status)
+            else:
+                # Turn off LED when not running
+                if game2_state.arduino:
+                    game2_state.arduino.set_led(False)
             
             # Draw overlays
             frame = draw_mode_header(
@@ -249,6 +264,10 @@ async def websocket_game2(websocket: WebSocket):
                 break
             await asyncio.sleep(0.05)
     
+    # Initialize Arduino LED if not already done
+    if game2_state.arduino is None:
+        game2_state.arduino = ArduinoLED(CONFIG["arduino_port"], CONFIG["arduino_baud"])
+    
     game2_state.running = True
     
     await websocket.send_json({
@@ -307,6 +326,9 @@ async def websocket_game2(websocket: WebSocket):
                 if game2_state.session_state == SessionState.RUNNING:
                     game2_state.session_state = SessionState.IDLE
                     game2_state.metronome.stop()
+                    # Turn off LED when session stops
+                    if game2_state.arduino:
+                        game2_state.arduino.set_led(False)
                     await websocket.send_json({
                         "type": "session_stopped",
                         "data": {}
