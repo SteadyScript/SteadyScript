@@ -6,7 +6,7 @@ Real-time tremor tracking using computer vision.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import video, websocket, game2_ws
+from .api import video, websocket, game2_ws, sessions
 
 app = FastAPI(
     title="SteadyScript API",
@@ -25,6 +25,7 @@ app.add_middleware(
 app.include_router(video.router, tags=["video"])
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(game2_ws.router, tags=["game2"])
+app.include_router(sessions.router, tags=["sessions"])
 
 
 @app.get("/")
