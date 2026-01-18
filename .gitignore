@@ -43,13 +43,12 @@ coverage/
 htmlcov/
 .pytest_cache/
 
+# Vite
+.vite/
+
+# Data
+data/
+
 # Misc
 *.bak
 *.tmp
-
-
-__pycache__/
-.vscode/
-data/
-env/
-.DS_Store
