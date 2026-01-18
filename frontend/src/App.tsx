@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
+import { Game2View } from './components/Game2View';
 
 const API_URL = 'http://localhost:8000';
 
 function App() {
+  const [view, setView] = useState<'game1' | 'game2'>('game2');
   const { isConnected, trackingData, startSession, stopSession } = useWebSocket();
 
   const stabilityColor = trackingData?.stability.level === 'stable' 
@@ -17,6 +20,10 @@ function App() {
     ? 'border-yellow-500' 
     : 'border-red-500';
 
+  if (view === 'game2') {
+    return <Game2View />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <header className="border-b border-gray-800 px-6 py-4">
@@ -25,11 +32,35 @@ function App() {
             <h1 className="text-2xl font-bold">SteadyScript</h1>
             <p className="text-gray-400 text-sm">Real-time hand stability tracking</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-            <span className="text-sm text-gray-400">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setView('game1')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  view === 'game1'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Game 1
+              </button>
+              <button
+                onClick={() => setView('game2')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  view === 'game2'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Game 2
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span className="text-sm text-gray-400">
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
           </div>
         </div>
       </header>
