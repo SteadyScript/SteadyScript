@@ -298,9 +298,6 @@ export function Game2View() {
                     <span>Adjust BPM</span>
                   </div>
                 )}
-                {currentMode === 'HOLD' && (
-                  <span className="text-gray-500">Click camera to calibrate target</span>
-                )}
               </div>
             </CardContent>
           </Card>
