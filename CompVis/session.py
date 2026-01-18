@@ -172,6 +172,7 @@ class SessionManager:
             Dictionary with all session metrics
         """
         return {
+            "type": "HOLD",
             "duration_s": self.duration,
             "avg_jitter": round(self.avg_jitter, 2),
             "p95_jitter": round(self.p95_jitter, 2),

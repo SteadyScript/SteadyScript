@@ -70,7 +70,14 @@ The application will:
 2. Display instructions on screen
 3. Wait for calibration
 
-### User Flow
+### Mode Selection
+
+The app starts with a mode selection menu. Choose your training mode:
+
+- **Press '1'** for **HOLD mode** (Level 1) - Hold the pen steady inside a circle
+- **Press '2'** for **FOLLOW mode** (Level 2) - Follow a moving target dot smoothly
+
+### HOLD Mode (Level 1) - User Flow
 
 #### Step 1: Calibrate Circle Center
 
@@ -84,6 +91,37 @@ The application will:
 - The app will show "Click to set circle EDGE (radius)"
 - The system calculates the radius automatically
 - After clicking, you'll enter READY mode
+
+#### Step 3: Start HOLD Session
+
+- Press **SPACE** to start a 10-second hold session
+- Keep the marker inside the circle
+- View real-time tremor metrics
+- Session ends automatically after 10 seconds
+
+### FOLLOW Mode (Level 2) - User Flow
+
+#### Step 1: Start FOLLOW Session
+
+- No calibration needed for FOLLOW mode
+- Press **SPACE** to start a 20-second follow session
+- A green target dot will appear and move in a circular path
+
+#### Step 2: Follow the Target
+
+- **Move your pen smoothly** to follow the green target dot
+- The target moves in a circular path (one full loop ~8 seconds)
+- Focus on smooth, controlled movement rather than speed
+
+#### Step 3: View Results
+
+- Session ends automatically after 20 seconds
+- View your Movement Quality Score (0-100)
+- Metrics include:
+  - **Jitter (p95)**: Tremor-like micro-instability during movement
+  - **Jerk (p95)**: Smoothness measure (lower = smoother)
+  - **Wobble Ratio**: Path efficiency (how direct vs. wobbly)
+  - **Movement Quality Score**: Combined metric (higher = better)
 
 #### Step 3: Tune Marker Detection (Optional)
 
@@ -174,7 +212,9 @@ The LED updates in real-time as you move the pen, providing instant visual feedb
 
 | Key | Action |
 |-----|--------|
-| **'c'** | Reset calibration (start over) |
+| **'1'** | Switch to HOLD mode (Level 1) |
+| **'2'** | Switch to FOLLOW mode (Level 2) |
+| **'c'** | Reset calibration (HOLD mode only) |
 | **'t'** | Toggle HSV trackbars for marker tuning |
 | **SPACE** | Start session (when ready) or retry (after results) |
 | **'q'** | Quit application |
@@ -201,25 +241,46 @@ Instantaneous deviation from smoothed position (in pixels). Measured as the dist
 
 ## Session Data
 
-Results are saved to `data/sessions.json` with the following format:
+Results are saved to `CompVis/data/sessions.json` with the following format:
 
+**HOLD Mode Session:**
 ```json
-[
-  {
-    "timestamp": "2024-01-15T10:30:00Z",
-    "duration_s": 10.0,
-    "circle_center": [320, 240],
-    "circle_radius": 50.0,
-    "hsv_lower": [40, 50, 50],
-    "hsv_upper": [80, 255, 255],
-    "avg_jitter": 2.5,
-    "p95_jitter": 4.2,
-    "tremor_score": 3.8,
-    "inside_circle_pct": 85.5,
-    "frames_total": 300,
-    "frames_marker_found": 295
-  }
-]
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "type": "HOLD",
+  "duration_s": 10.0,
+  "circle_center": [320, 240],
+  "circle_radius": 50.0,
+  "hsv_lower": [100, 50, 50],
+  "hsv_upper": [130, 255, 255],
+  "avg_jitter": 2.5,
+  "p95_jitter": 4.2,
+  "tremor_score": 3.8,
+  "inside_circle_pct": 85.5,
+  "frames_total": 300,
+  "frames_marker_found": 295
+}
+```
+
+**FOLLOW Mode Session:**
+```json
+{
+  "timestamp": "2024-01-15T10:35:00Z",
+  "type": "FOLLOW",
+  "duration_s": 20.0,
+  "hsv_lower": [100, 50, 50],
+  "hsv_upper": [130, 255, 255],
+  "avg_jitter": 3.2,
+  "p95_jitter": 5.1,
+  "avg_jerk": 45.3,
+  "p95_jerk": 78.5,
+  "wobble_ratio": 0.25,
+  "movement_quality_score": 72.5,
+  "avg_target_error": 12.3,
+  "p95_target_error": 18.7,
+  "frames_total": 600,
+  "frames_marker_found": 585
+}
 ```
 
 ## Troubleshooting
